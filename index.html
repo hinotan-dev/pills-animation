@@ -2,13 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Pill Drop Interactive</title>
   <style>
     html, body {
       margin: 0;
+      padding: 0;
       height: 100%;
+      width: 100%;
       background: #999;
+      touch-action: none; /* Prevents double-tap zoom */
+      overscroll-behavior: none; /* Prevents scroll bouncing on iOS */
     }
     #canvas-container {
       width: 90vw;
@@ -17,6 +21,7 @@
       overflow: hidden;
       border-radius: 30px;
       box-shadow: 0 0 50px rgba(0,0,0,0.1);
+      touch-action: none;
     }
     canvas {
       display: block;
@@ -113,6 +118,7 @@
 
       enableRenderingText();
       enableClickNavigation();
+      enableTiltGravity();
       spawnLoop();
     }
 
@@ -212,6 +218,23 @@
             }
           }
         });
+      });
+    }
+
+    function enableTiltGravity() {
+      if (!window.DeviceOrientationEvent) return;
+
+      window.addEventListener("deviceorientation", (event) => {
+        const gamma = event.gamma || 0; // Left/right tilt
+        const beta = event.beta || 0;   // Front/back tilt
+
+        // Normalize from angle (−90 to 90) to range (−1 to 1)
+        const gravityX = Math.min(Math.max(gamma / 90, -1), 1);
+        const gravityY = Math.min(Math.max(beta / 90, -1), 1);
+
+        // Apply to Matter.js gravity
+        engine.gravity.x = gravityX;
+        engine.gravity.y = gravityY;
       });
     }
 
