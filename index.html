@@ -46,19 +46,19 @@
     const pills = [];
 
     const pillData = [
-      { text: "⚙️ JavaScript", url: "#javascript" },
-      { text: "💻 HTML + CSS", url: "#css" },
-      { text: "⚛️ React", url: "#react" },
-      { text: "🖼️ Portfolio", url: "#portfolio" },
-      { text: "📱 Responsive", url: "#responsive" },
-      { text: "🎯 UX Design", url: "#ux" },
-      { text: "🧠 AI Projects", url: "#ai" },
-      { text: "🌐 Web Dev", url: "#webdev" },
-      { text: "🖌️ Lettering", url: "#lettering" },
-      { text: "✍️ Calligraphy", url: "#lettering" },
-      { text: "🌈 Graphics", url: "#graphic" },
-      { text: "💡 Solo apps", url: "#solo" },
-      { text: "🎨 Illustration", url: "#illustration" },
+      { text: "⚙️ JavaScript", url: "#javascript", isSpawned: false },
+      { text: "💻 HTML + CSS", url: "#css", isSpawned: false },
+      { text: "⚛️ React", url: "#react", isSpawned: false },
+      { text: "🖼️ Portfolio", url: "#portfolio", isSpawned: false },
+      { text: "📱 Responsive", url: "#responsive", isSpawned: false },
+      { text: "🎯 UX Design", url: "#ux", isSpawned: false },
+      { text: "🧠 AI Projects", url: "#ai", isSpawned: false },
+      { text: "🌐 Web Dev", url: "#webdev", isSpawned: false },
+      { text: "🖌️ Lettering", url: "#lettering", isSpawned: false },
+      { text: "✍️ Calligraphy", url: "#lettering", isSpawned: false },
+      { text: "🌈 Graphics", url: "#graphic", isSpawned: false },
+      { text: "💡 Solo apps", url: "#solo", isSpawned: false },
+      { text: "🎨 Illustration", url: "#illustration", isSpawned: false },
     ];
 
     const emojiPool = [
@@ -116,6 +116,15 @@
       runner = Runner.create();
       Runner.run(runner, engine);
 
+      // Monitor the pills to detect lost ones
+      let frameCount = 0;
+      Events.on(engine, "afterUpdate", () => {
+        frameCount++;
+        if (frameCount % 60 === 0) {
+          monitorPills(); // runs roughly once per second
+        }
+      });
+
       // Create boundaries
       ground = Bodies.rectangle(width / 2, height + 20, width, 40, { isStatic: true });
       leftWall = Bodies.rectangle(-20, height / 2, 40, height, { isStatic: true });
@@ -169,12 +178,14 @@
       }
 
       body.customData = data;
+      if (!data.isEmoji) body.originalData = data;
       pills.push(body);
       World.add(world, body);
     }
 
     function monitorPills() {
       const buffer = 300;
+      const { width, height } = getCanvasContainerSize();
 
       for (let i = pills.length - 1; i >= 0; i--) {
         const pill = pills[i];
@@ -188,10 +199,11 @@
           World.remove(world, pill);
           pills.splice(i, 1);
 
-          // Update emoji count if needed
-          if (pill.isEmoji) emojiCount--;
-
-          // Optional: respawn pill or just leave it to spawnLoop
+          if (pill.customData.isEmoji) {
+            emojiCount--;
+          } else if (pill.originalData) {
+            pill.originalData.isSpawned = false;
+          }
         }
       }
     }
@@ -200,11 +212,15 @@
       if (spawnTimer) return;
 
       spawnTimer = setInterval(() => {
-        if (i < pillData.length) {
-          spawnPill(pillData[i]);
-          i++;
+        // Randomly pick one unspawned text pill
+        const unspawned = pillData.filter(p => !p.isSpawned);
+        if (unspawned.length > 0) {
+          const randomPill = unspawned[Math.floor(Math.random() * unspawned.length)];
+          spawnPill(randomPill);
+          randomPill.isSpawned = true;
         }
 
+        // Emojis as before
         if (emojiCount < MAX_EMOJIS && Math.random() < 0.6) {
           const emoji = emojiPool[Math.floor(Math.random() * emojiPool.length)];
           spawnPill({ text: emoji, isEmoji: true });
@@ -212,6 +228,7 @@
         }
       }, 900);
     }
+
 
     function stopSpawning() {
       clearInterval(spawnTimer);
