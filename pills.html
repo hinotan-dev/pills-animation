@@ -8,14 +8,15 @@
     html, body {
       margin: 0;
       height: 100%;
-      background: #f4f4f4;
+      background: #999;
     }
     #canvas-container {
-      width: 100%;
-      height: 100%;
+      width: 90vw;
+      height: 90vh;
+      margin: 5vh auto;
       overflow: hidden;
       border-radius: 30px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      box-shadow: 0 0 50px rgba(0,0,0,0.1);
     }
     canvas {
       display: block;
@@ -26,69 +27,108 @@
   <div id="canvas-container"></div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
-    const { Engine, Render, Runner, Bodies, Composite, Events, Mouse, MouseConstraint, World } = Matter;
+    const { Engine, Render, Runner, Bodies, Events, Mouse, MouseConstraint, World } = Matter;
 
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-
-    const engine = Engine.create();
-    const world = engine.world;
-
-    const render = Render.create({
-      element: document.getElementById("canvas-container"),
-      engine: engine,
-      options: {
-        width: width,
-        height: height,
-        wireframes: false,
-        background: "#fafafa"
-      }
-    });
-
-    Render.run(render);
-    Runner.run(Runner.create(), engine);
-
-    // Walls
-    const ground = Bodies.rectangle(width / 2, height + 20, width, 40, { isStatic: true });
-    const leftWall = Bodies.rectangle(-20, height / 2, 40, height, { isStatic: true });
-    const rightWall = Bodies.rectangle(width + 20, height / 2, 40, height, { isStatic: true });
-    World.add(world, [ground, leftWall, rightWall]);
-
+    let engine, render, runner, world;
+    let ground, leftWall, rightWall;
     const pills = [];
 
     const pillData = [
-      { text: "💻 JavaScript", url: "#javascript" },
-      { text: "🎨 CSS", url: "#css" },
+      { text: "⚙️ JavaScript", url: "#javascript" },
+      { text: "💻 HTML + CSS", url: "#css" },
       { text: "⚛️ React", url: "#react" },
       { text: "🖼️ Portfolio", url: "#portfolio" },
       { text: "📱 Responsive", url: "#responsive" },
       { text: "🎯 UX Design", url: "#ux" },
       { text: "🧠 AI Projects", url: "#ai" },
-      { text: "🌐 Web Dev", url: "#webdev" }
+      { text: "🌐 Web Dev", url: "#webdev" },
+      { text: "🖌️ Lettering", url: "#lettering" },
+      { text: "✍️ Calligraphy", url: "#lettering" },
+      { text: "🌈 Graphics", url: "#graphic" },
+      { text: "💡 Solo apps", url: "#solo" },
+      { text: "🎨 Illustration", url: "#illustration" },
     ];
 
-    const emojiPool = ["🐶", "❤️", "😻", "⭐", "🔥", "🥳", "🎉", "💡"];
+    const emojiPool = [
+      "🖼️", "❤️", "😻", "⭐", "🔥", "🥳", "🎉", "💡", "🧩", "📚", 
+      "🤯", "🤩", "🎯", "🤖", "🌈", "📺", "📜", "📐", "🔤", "🧰",
+      "😎", "🤔", "😇", "🤡", "🙏", "👩🏻‍🏫", "🤠", "👩🏻‍💻", "👩🏻‍🎓", "👩🏻‍🎨",
+      "🙋🏻‍♀️", "🧶", "🏆", "🛝", "🎱", "⛷️", "🎬", "🎹", "🎮", "📱",
+    ];
+
+    function getContainerSize() {
+      const container = document.getElementById("canvas-container");
+      return {
+        width: container.clientWidth,
+        height: container.clientHeight
+      };
+    }
+
+    function initMatterCanvas() {
+      const { width, height } = getContainerSize();
+
+      engine = Engine.create();
+      world = engine.world;
+
+      render = Render.create({
+        element: document.getElementById("canvas-container"),
+        engine,
+        options: {
+          width,
+          height,
+          wireframes: false,
+          background: "#fafafa"
+        }
+      });
+
+      Render.run(render);
+      runner = Runner.create();
+      Runner.run(runner, engine);
+
+      // Create boundaries
+      ground = Bodies.rectangle(width / 2, height + 20, width, 40, { isStatic: true });
+      leftWall = Bodies.rectangle(-20, height / 2, 40, height, { isStatic: true });
+      rightWall = Bodies.rectangle(width + 20, height / 2, 40, height, { isStatic: true });
+      World.add(world, [ground, leftWall, rightWall]);
+
+      // Mouse interaction
+      const mouse = Mouse.create(render.canvas);
+      const mouseConstraint = MouseConstraint.create(engine, {
+        mouse,
+        constraint: {
+          stiffness: 0.2,
+          render: { visible: false }
+        }
+      });
+      World.add(world, mouseConstraint);
+      render.mouse = mouse;
+
+      enableRenderingText();
+      enableClickNavigation();
+      spawnLoop();
+    }
 
     function spawnPill(data) {
+      const { width } = getContainerSize();
       const x = Math.random() * (width - 120) + 60;
       const isEmojiOnly = data.isEmoji;
-
       let body;
 
       if (isEmojiOnly) {
-        body = Bodies.circle(x, -30, 20, {
+        body = Bodies.circle(x, -30, 18, {
           restitution: 0.9,
           friction: 0.05,
           label: data.text,
           render: {
-            fillStyle: "#fff"
+            fillStyle: "transparent",
+            strokeStyle: "transparent"
           }
         });
       } else {
-        body = Bodies.rectangle(x, -30, 140, 40, {
+        body = Bodies.rectangle(x, -30, 210, 60, {
           restitution: 0.9,
           friction: 0.1,
-          chamfer: { radius: 20 },
+          chamfer: { radius: 30 },
           render: {
             fillStyle: "#ffffff",
             strokeStyle: "#ccc",
@@ -102,117 +142,105 @@
       World.add(world, body);
     }
 
-    // Render text/emoji over shapes
-    Events.on(render, "afterRender", () => {
-      const ctx = render.context;
-      ctx.font = "16px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-
-      pills.forEach(pill => {
-        const { position, angle } = pill;
-        ctx.save();
-        ctx.translate(position.x, position.y);
-        ctx.rotate(angle);
-        ctx.fillStyle = "#000";
-        ctx.fillText(pill.customData.text, 0, 0);
-        ctx.restore();
-      });
-    });
-
-
-    // Click navigation
-    render.canvas.addEventListener("click", function(event) {
-      const mousePos = { x: event.offsetX, y: event.offsetY };
-      pills.forEach(pill => {
-        const bounds = pill.bounds;
-        if (
-          mousePos.x >= bounds.min.x &&
-          mousePos.x <= bounds.max.x &&
-          mousePos.y >= bounds.min.y &&
-          mousePos.y <= bounds.max.y
-        ) {
-          if (pill.customData.url) {
-            window.location.href = pill.customData.url;
-          }
+    function spawnLoop() {
+      let i = 0;
+      setInterval(() => {
+        if (i < pillData.length) {
+          spawnPill(pillData[i]);
         }
+        if (Math.random() < 0.6) {
+          const emoji = emojiPool[Math.floor(Math.random() * emojiPool.length)];
+          spawnPill({ text: emoji, isEmoji: true });
+        }
+        i++;
+      }, 900);
+    }
+
+    function enableRenderingText() {
+      Events.on(render, "afterRender", () => {
+        const ctx = render.context;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        pills.forEach(pill => {
+          const { position, angle } = pill;
+          const isEmoji = pill.customData.isEmoji;
+
+          ctx.save();
+          ctx.translate(position.x, position.y);
+          ctx.rotate(angle);
+
+          // 🔸 Set different font sizes
+          ctx.font = isEmoji ? "36px sans-serif" : "24px sans-serif";
+          ctx.fillStyle = "#000";
+          ctx.fillText(pill.customData.text, 0, 0);
+
+          ctx.restore();
+        });
       });
-    });
+    }
 
-    // Draggable pills (via mouse constraint)
-    const mouse = Mouse.create(render.canvas);
-    const mouseConstraint = MouseConstraint.create(engine, {
-      mouse: mouse,
-      constraint: {
-        stiffness: 0.2,
-        render: { visible: false }
-      }
-    });
-    World.add(world, mouseConstraint);
-    render.mouse = mouse;
+    function enableClickNavigation() {
+      render.canvas.addEventListener("click", (event) => {
+        const mousePos = { x: event.offsetX, y: event.offsetY };
+        pills.forEach(pill => {
+          const bounds = pill.bounds;
+          if (
+            mousePos.x >= bounds.min.x &&
+            mousePos.x <= bounds.max.x &&
+            mousePos.y >= bounds.min.y &&
+            mousePos.y <= bounds.max.y
+          ) {
+            if (pill.customData.url) {
+              window.location.href = pill.customData.url;
+            }
+          }
+        });
+      });
+    }
 
-    // Spawn pills and emoji
-    let i = 0;
-    const spawnInterval = setInterval(() => {
-      if (i < pillData.length) {
-        spawnPill(pillData[i]);
-      }
-      // spawn random emoji for fun
-      if (Math.random() < 0.6) {
-        const emoji = emojiPool[Math.floor(Math.random() * emojiPool.length)];
-        spawnPill({ text: emoji, isEmoji: true });
-      }
-      i++;
-    }, 900);
-
-    function clampPillsToViewport(newWidth, newHeight) {
+    function clampPillsToViewport(width, height) {
       pills.forEach(pill => {
-        const buffer = 40; // prevent edge sticking
+        const buffer = 40;
         const pos = pill.position;
         let x = pos.x;
         let y = pos.y;
-
-        if (x > newWidth - buffer) x = newWidth - buffer;
+        if (x > width - buffer) x = width - buffer;
         if (x < buffer) x = buffer;
-        if (y > newHeight - buffer) y = newHeight - buffer;
-
+        if (y > height - buffer) y = height - buffer;
         Matter.Body.setPosition(pill, { x, y });
       });
     }
 
-    // Make the canvas and the physics world responsive to viewport size changes
-    window.addEventListener('resize', () => {
-      const newWidth = window.innerWidth;
-      const newHeight = window.innerHeight;
+    function updateWorldOnResize() {
+      const { width, height } = getContainerSize();
 
-      // Resize canvas
-      render.canvas.width = newWidth;
-      render.canvas.height = newHeight;
-      render.options.width = newWidth;
-      render.options.height = newHeight;
+      render.canvas.width = width;
+      render.canvas.height = height;
+      render.options.width = width;
+      render.options.height = height;
 
-      // Update ground and right wall
-      Matter.Body.setPosition(ground, { x: newWidth / 2, y: newHeight + 20 });
+      Matter.Body.setPosition(ground, { x: width / 2, y: height + 20 });
       Matter.Body.setVertices(ground, [
-        { x: 0, y: newHeight },
-        { x: newWidth, y: newHeight },
-        { x: newWidth, y: newHeight + 40 },
-        { x: 0, y: newHeight + 40 }
+        { x: 0, y: height },
+        { x: width, y: height },
+        { x: width, y: height + 40 },
+        { x: 0, y: height + 40 }
       ]);
 
-      Matter.Body.setPosition(rightWall, { x: newWidth + 20, y: newHeight / 2 });
+      Matter.Body.setPosition(rightWall, { x: width + 20, y: height / 2 });
       Matter.Body.setVertices(rightWall, [
-        { x: newWidth, y: 0 },
-        { x: newWidth + 40, y: 0 },
-        { x: newWidth + 40, y: newHeight },
-        { x: newWidth, y: newHeight }
+        { x: width, y: 0 },
+        { x: width + 40, y: 0 },
+        { x: width + 40, y: height },
+        { x: width, y: height }
       ]);
 
-      // 👇 Prevent pills from being "eaten"
-      clampPillsToViewport(newWidth, newHeight);
-    });
+      clampPillsToViewport(width, height);
+    }
 
-
+    window.addEventListener("resize", updateWorldOnResize);
+    window.addEventListener("DOMContentLoaded", initMatterCanvas);
   </script>
 </body>
 </html>
