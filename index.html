@@ -294,8 +294,12 @@
     function updateWorldOnResize() {
       const { width, height } = getCanvasContainerSize();
 
-      render.canvas.width = width;
-      render.canvas.height = height;
+      render.canvas.width = width * dpr;
+      render.canvas.height = height * dpr;
+      render.canvas.style.width = width + "px";
+      render.canvas.style.height = height + "px";
+      render.context.setTransform(dpr, 0, 0, dpr, 0, 0);
+      
       render.options.width = width;
       render.options.height = height;
 
