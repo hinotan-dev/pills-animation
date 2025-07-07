@@ -142,9 +142,14 @@
       World.add(world, body);
     }
 
+    let i = 0;
+    let spawnTimer = null;
+    let spawnActive = true;
+
     function spawnLoop() {
-      let i = 0;
-      setInterval(() => {
+      spawnTimer = setInterval(() => {
+        if (!spawnActive) return;
+
         if (i < pillData.length) {
           spawnPill(pillData[i]);
         }
@@ -239,6 +244,9 @@
       clampPillsToViewport(width, height);
     }
 
+    document.addEventListener("visibilitychange", () => {
+      spawnActive = document.visibilityState === "visible";
+    });
     window.addEventListener("resize", updateWorldOnResize);
     window.addEventListener("DOMContentLoaded", initMatterCanvas);
   </script>
