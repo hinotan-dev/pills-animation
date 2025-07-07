@@ -173,6 +173,29 @@
       World.add(world, body);
     }
 
+    function monitorPills() {
+      const buffer = 300;
+
+      for (let i = pills.length - 1; i >= 0; i--) {
+        const pill = pills[i];
+        const { x, y } = pill.position;
+
+        const isOffscreen =
+          x < -buffer || x > width + buffer ||
+          y < -buffer || y > height + buffer;
+
+        if (isOffscreen) {
+          World.remove(world, pill);
+          pills.splice(i, 1);
+
+          // Update emoji count if needed
+          if (pill.isEmoji) emojiCount--;
+
+          // Optional: respawn pill or just leave it to spawnLoop
+        }
+      }
+    }
+
     function spawnLoop() {
       if (spawnTimer) return;
 
@@ -209,7 +232,7 @@
           ctx.translate(position.x, position.y);
           ctx.rotate(angle);
 
-          // 🔸 Set different font sizes
+          // Set different font sizes
           ctx.font = isEmoji ? "36px sans-serif" : "24px sans-serif";
           ctx.fillStyle = "#000";
           ctx.fillText(pill.customData.text, 0, 0);
