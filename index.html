@@ -133,6 +133,8 @@
 
       // Mouse interaction
       const mouse = Mouse.create(render.canvas);
+      mouse.pixelRatio = window.devicePixelRatio;
+      
       const mouseConstraint = MouseConstraint.create(engine, {
         mouse,
         constraint: {
@@ -140,6 +142,7 @@
           render: { visible: false }
         }
       });
+
       World.add(world, mouseConstraint);
       render.mouse = mouse;
 
