@@ -118,7 +118,7 @@
 
       enableRenderingText();
       enableClickNavigation();
-      enableTiltGravity();
+      requestTiltPermissionIfNeeded();
       spawnLoop();
     }
 
@@ -237,6 +237,27 @@
         engine.gravity.y = gravityY;
       });
     }
+
+    function requestTiltPermissionIfNeeded() {
+      
+      // For iOS 13+ (Safari), access to device orientation requires explicit permission
+
+      if (
+        typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function"
+      ) {
+        DeviceOrientationEvent.requestPermission()
+          .then(response => {
+            if (response === "granted") {
+              enableTiltGravity();
+            }
+          })
+          .catch(console.error);
+      } else {
+        enableTiltGravity(); // Non-iOS or older
+      }
+    }
+
 
     function clampPillsToViewport(width, height) {
       pills.forEach(pill => {
