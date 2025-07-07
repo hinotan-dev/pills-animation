@@ -115,11 +115,14 @@
       let body;
 
       if (isEmojiOnly) {
-        body = Bodies.circle(x, -30, 30, {
+        body = Bodies.circle(x, -30, 18, {
           restitution: 0.9,
           friction: 0.05,
           label: data.text,
-          render: { fillStyle: "#fff" }
+          render: {
+            fillStyle: "transparent",
+            strokeStyle: "transparent"
+          }
         });
       } else {
         body = Bodies.rectangle(x, -30, 210, 60, {
@@ -156,16 +159,22 @@
     function enableRenderingText() {
       Events.on(render, "afterRender", () => {
         const ctx = render.context;
-        ctx.font = "24px sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
+
         pills.forEach(pill => {
           const { position, angle } = pill;
+          const isEmoji = pill.customData.isEmoji;
+
           ctx.save();
           ctx.translate(position.x, position.y);
           ctx.rotate(angle);
+
+          // 🔸 Set different font sizes
+          ctx.font = isEmoji ? "36px sans-serif" : "24px sans-serif";
           ctx.fillStyle = "#000";
           ctx.fillText(pill.customData.text, 0, 0);
+
           ctx.restore();
         });
       });
