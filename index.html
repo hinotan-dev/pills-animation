@@ -330,9 +330,13 @@
       }
     });
 
+    let resizeTimer;
     window.addEventListener("resize", () => {
-      setCanvasContainerSize();
-      updateWorldOnResize();
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        setCanvasContainerSize();
+        updateWorldOnResize();
+      }, 100);
     });
 
     window.addEventListener("DOMContentLoaded", () => {
