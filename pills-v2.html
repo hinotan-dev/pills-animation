@@ -44,7 +44,7 @@
       { text: "🌐 Web Dev", url: "#webdev" },
       { text: "🖌️ Lettering", url: "#lettering" },
       { text: "✍️ Calligraphy", url: "#lettering" },
-      { text: "🌈 Graphic", url: "#graphic" },
+      { text: "🌈 Graphics", url: "#graphic" },
       { text: "💡 Solo apps", url: "#solo" },
       { text: "🎨 Illustration", url: "#illustration" },
     ];
@@ -115,17 +115,17 @@
       let body;
 
       if (isEmojiOnly) {
-        body = Bodies.circle(x, -30, 20, {
+        body = Bodies.circle(x, -30, 30, {
           restitution: 0.9,
           friction: 0.05,
           label: data.text,
           render: { fillStyle: "#fff" }
         });
       } else {
-        body = Bodies.rectangle(x, -30, 140, 40, {
+        body = Bodies.rectangle(x, -30, 210, 60, {
           restitution: 0.9,
           friction: 0.1,
-          chamfer: { radius: 20 },
+          chamfer: { radius: 30 },
           render: {
             fillStyle: "#ffffff",
             strokeStyle: "#ccc",
@@ -156,7 +156,7 @@
     function enableRenderingText() {
       Events.on(render, "afterRender", () => {
         const ctx = render.context;
-        ctx.font = "16px sans-serif";
+        ctx.font = "24px sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         pills.forEach(pill => {
