@@ -9,11 +9,13 @@
       margin: 0;
       height: 100%;
       background: #999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
     #canvas-container {
       width: 90vw;
-      height: 90vh;
-      margin: 5vh auto;
+      height: 100%;
       overflow: hidden;
       border-radius: 30px;
       box-shadow: 0 0 50px rgba(0,0,0,0.1);
@@ -64,7 +66,7 @@
       "🙋🏻‍♀️", "🧶", "🏆", "🛝", "🎱", "⛷️", "🎬", "🎹", "🎮", "📱",
     ];
 
-    function getContainerSize() {
+    function getCanvasContainerSize() {
       const container = document.getElementById("canvas-container");
       return {
         width: container.clientWidth,
@@ -72,8 +74,16 @@
       };
     }
 
+    function setCanvasContainerSize() {
+      const container = document.getElementById("canvas-container");
+      const height = window.innerHeight * 0.9;
+      const width = window.innerWidth * 0.9;
+      container.style.height = `${height}px`;
+      container.style.width = `${width}px`;
+    }
+
     function initMatterCanvas() {
-      const { width, height } = getContainerSize();
+      const { width, height } = getCanvasContainerSize();
 
       engine = Engine.create();
       world = engine.world;
@@ -117,7 +127,7 @@
     }
 
     function spawnPill(data) {
-      const { width } = getContainerSize();
+      const { width } = getCanvasContainerSize();
       const x = Math.random() * (width - 120) + 60;
       const isEmojiOnly = data.isEmoji;
       let body;
@@ -229,7 +239,7 @@
     }
 
     function updateWorldOnResize() {
-      const { width, height } = getContainerSize();
+      const { width, height } = getCanvasContainerSize();
 
       render.canvas.width = width;
       render.canvas.height = height;
@@ -263,8 +273,15 @@
       }
     });
 
-    window.addEventListener("resize", updateWorldOnResize);
-    window.addEventListener("DOMContentLoaded", initMatterCanvas);
+    window.addEventListener("resize", () => {
+      setCanvasContainerSize();
+      updateWorldOnResize();
+    });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      setCanvasContainerSize();
+      initMatterCanvas();
+    });
   </script>
 </body>
 </html>
