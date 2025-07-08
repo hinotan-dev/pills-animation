@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pill Drop Interactive</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #canvas-container {
+      width: 100vw;
+      height: 100%;
+      overflow: hidden;
+      border-radius: 30px;
+      box-shadow: 0 0 50px rgba(0,0,0,0.1);
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <div id="project-card">Check out this project…</div>
+
+  <style>
+    #project-card {
+      position: absolute;
+      bottom: -300px;
+      left: 0;
+      width: 100%;
+      height: 300px;
+      background: rgba(0,0,0,0.5);
+      box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.2);
+      transition: transform 0.5s ease;
+      transform: translateY(0);
+      z-index: 10;
+    }
+
+    #project-card.visible {
+      transform: translateY(-300px);
+    }
+  </style>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <script>
+    const { Engine, Render, Runner, Bodies, Events, Mouse, MouseConstraint, World } = Matter;
+
+    let engine, render, runner, world;
+    let ground, leftWall, rightWall;
+
+    const dpr = window.devicePixelRatio || 1;
+
+    let i = 0;
+    let emojiCount = 0;
+    let spawnTimer = null;
+    let spawnActive = true;
+
+    const MAX_EMOJIS = 70;
+    const CONTAINER_SIZE_RATIO = 1;
+
+    const pills = [];
+
+    const pillData = [
+      { text: "⚙️ JavaScript", url: "#javascript", isSpawned: false },
+      { text: "💻 HTML + CSS", url: "#css", isSpawned: false },
+      { text: "⚛️ React", url: "#react", isSpawned: false },
+      { text: "🖼️ Portfolio", url: "#portfolio", isSpawned: false },
+      { text: "📱 Responsive", url: "#responsive", isSpawned: false },
+      { text: "🎯 UX Design", url: "#ux", isSpawned: false },
+      { text: "🧠 AI Projects", url: "#ai", isSpawned: false },
+      { text: "🌐 Web Dev", url: "#webdev", isSpawned: false },
+      { text: "🖌️ Lettering", url: "#lettering", isSpawned: false },
+      { text: "✍️ Calligraphy", url: "#lettering", isSpawned: false },
+      { text: "🌈 Graphics", url: "#graphic", isSpawned: false },
+      { text: "💡 Solo apps", url: "#solo", isSpawned: false },
+      { text: "🎨 Illustration", url: "#illustration", isSpawned: false },
+    ];
+
+    const emojiPool = [
+      "🖼️", "❤️", "😻", "⭐", "🔥", "🥳", "🎉", "💡", "🧩", "📚", 
+      "🤯", "🤩", "🎯", "🤖", "🌈", "📺", "📜", "📐", "🔤", "🧰",
+      "😎", "🤔", "😇", "🤡", "🙏", "👩🏻‍🏫", "🤠", "👩🏻‍💻", "👩🏻‍🎓", "👩🏻‍🎨",
+      "🙋🏻‍♀️", "🧶", "🏆", "🛝", "🎱", "⛷️", "🎬", "🎹", "🎮", "📱",
+    ];
+
+    function getCanvasContainerSize() {
+      const container = document.getElementById("canvas-container");
+      return {
+        width: container.clientWidth,
+        height: container.clientHeight
+      };
+    }
+
+    function setCanvasContainerSize() {
+      const container = document.getElementById("canvas-container");
+      const height = window.innerHeight * CONTAINER_SIZE_RATIO;
+      const width = window.innerWidth * CONTAINER_SIZE_RATIO;
+      container.style.height = `${height}px`;
+      container.style.width = `${width}px`;
+    }
+
+    function initMatterCanvas() {
+      const { width, height } = getCanvasContainerSize();
+
+      engine = Engine.create();
+      world = engine.world;
+
+      render = Render.create({
+        element: document.getElementById("canvas-container"),
+        engine,
+        options: {
+          width,
+          height,
+          wireframes: false,
+          background: "#fafafa"
+        }
+      });
+
+      // Upscale the canvas
+      render.canvas.width = width * dpr;
+      render.canvas.height = height * dpr;
+
+      // But keep CSS size the same
+      render.canvas.style.width = width + "px";
+      render.canvas.style.height = height + "px";
+
+      // Scale the renderer context
+      render.context.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      Render.run(render);
+      runner = Runner.create();
+      Runner.run(runner, engine);
+
+      // Monitor the pills to detect lost ones
+      let frameCount = 0;
+      Events.on(engine, "afterUpdate", () => {
+        frameCount++;
+        if (frameCount % 60 === 0) {
+          monitorPills(); // runs roughly once per second
+        }
+      });
+
+      // Create boundaries
+      ground = Bodies.rectangle(width / 2, height + 20, width, 40, { isStatic: true });
+      leftWall = Bodies.rectangle(-20, height / 2, 40, height, { isStatic: true });
+      rightWall = Bodies.rectangle(width + 20, height / 2, 40, height, { isStatic: true });
+      World.add(world, [ground, leftWall, rightWall]);
+
+      // Mouse interaction
+      const mouse = Mouse.create(render.canvas);
+      mouse.pixelRatio = window.devicePixelRatio;
+      
+      const mouseConstraint = MouseConstraint.create(engine, {
+        mouse,
+        constraint: {
+          stiffness: 0.2,
+          render: { visible: false }
+        }
+      });
+
+      World.add(world, mouseConstraint);
+      render.mouse = mouse;
+
+      enableRenderingText();
+      enableClickNavigation();
+      spawnLoop();
+    }
+
+    function spawnPill(data) {
+      const { width } = getCanvasContainerSize();
+      const x = Math.random() * (width - 120) + 60;
+      const isEmojiOnly = data.isEmoji;
+      let body;
+
+      if (isEmojiOnly) {
+        body = Bodies.circle(x, -30, 18, {
+          restitution: 0.9,
+          friction: 0.05,
+          label: data.text,
+          render: {
+            fillStyle: "transparent",
+            strokeStyle: "transparent"
+          }
+        });
+      } else {
+        body = Bodies.rectangle(x, -30, 210, 60, {
+          restitution: 0.9,
+          friction: 0.1,
+          chamfer: { radius: 30 },
+          render: {
+            fillStyle: "#ffffff",
+            strokeStyle: "#ccc",
+            lineWidth: 1
+          }
+        });
+      }
+
+      body.customData = data;
+      if (!data.isEmoji) body.originalData = data;
+      pills.push(body);
+      World.add(world, body);
+    }
+
+    function monitorPills() {
+      const buffer = 300;
+      const { width, height } = getCanvasContainerSize();
+
+      for (let i = pills.length - 1; i >= 0; i--) {
+        const pill = pills[i];
+        const { x, y } = pill.position;
+
+        const isOffscreen =
+          x < -buffer || x > width + buffer ||
+          y < -buffer || y > height + buffer;
+
+        if (isOffscreen) {
+          World.remove(world, pill);
+          pills.splice(i, 1);
+
+          if (pill.customData.isEmoji) {
+            emojiCount--;
+          } else if (pill.originalData) {
+            pill.originalData.isSpawned = false;
+          }
+        }
+      }
+    }
+
+    function spawnLoop() {
+      if (spawnTimer) return;
+
+      spawnTimer = setInterval(() => {
+        // Randomly pick one unspawned text pill
+        const unspawned = pillData.filter(p => !p.isSpawned);
+        if (unspawned.length > 0) {
+          const randomPill = unspawned[Math.floor(Math.random() * unspawned.length)];
+          spawnPill(randomPill);
+          randomPill.isSpawned = true;
+        }
+
+        // Emojis as before
+        if (emojiCount < MAX_EMOJIS && Math.random() < 0.6) {
+          const emoji = emojiPool[Math.floor(Math.random() * emojiPool.length)];
+          spawnPill({ text: emoji, isEmoji: true });
+          emojiCount++;
+        }
+      }, 900);
+    }
+
+
+    function stopSpawning() {
+      clearInterval(spawnTimer);
+      spawnTimer = null;
+    }
+
+    function enableRenderingText() {
+      Events.on(render, "afterRender", () => {
+        const ctx = render.context;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        pills.forEach(pill => {
+          const { position, angle } = pill;
+          const isEmoji = pill.customData.isEmoji;
+
+          ctx.save();
+          ctx.translate(position.x, position.y);
+          ctx.rotate(angle);
+
+          // Set different font sizes
+          ctx.font = isEmoji ? "36px sans-serif" : "24px sans-serif";
+          ctx.fillStyle = "#000";
+          ctx.fillText(pill.customData.text, 0, 0);
+
+          ctx.restore();
+        });
+      });
+    }
+
+    function enableClickNavigation() {
+      render.canvas.addEventListener("click", (event) => {
+        const mousePos = { x: event.offsetX, y: event.offsetY };
+        pills.forEach(pill => {
+          const bounds = pill.bounds;
+          if (
+            mousePos.x >= bounds.min.x &&
+            mousePos.x <= bounds.max.x &&
+            mousePos.y >= bounds.min.y &&
+            mousePos.y <= bounds.max.y
+          ) {
+            if (pill.customData.url) {
+              window.location.href = pill.customData.url;
+            }
+          }
+        });
+      });
+    }
+
+    function clampPillsToViewport(width, height) {
+      pills.forEach(pill => {
+        const buffer = 40;
+        const pos = pill.position;
+        let x = pos.x;
+        let y = pos.y;
+        if (x > width - buffer) x = width - buffer;
+        if (x < buffer) x = buffer;
+        if (y > height - buffer) y = height - buffer;
+        Matter.Body.setPosition(pill, { x, y });
+      });
+    }
+
+    function updateWorldOnResize() {
+      const { width, height } = getCanvasContainerSize();
+
+      render.canvas.width = width * dpr;
+      render.canvas.height = height * dpr;
+      render.canvas.style.width = width + "px";
+      render.canvas.style.height = height + "px";
+      render.context.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      render.options.width = width;
+      render.options.height = height;
+
+      Matter.Body.setPosition(ground, { x: width / 2, y: height + 20 });
+      Matter.Body.setVertices(ground, [
+        { x: 0, y: height },
+        { x: width, y: height },
+        { x: width, y: height + 40 },
+        { x: 0, y: height + 40 }
+      ]);
+
+      Matter.Body.setPosition(rightWall, { x: width + 20, y: height / 2 });
+      Matter.Body.setVertices(rightWall, [
+        { x: width, y: 0 },
+        { x: width + 40, y: 0 },
+        { x: width + 40, y: height },
+        { x: width, y: height }
+      ]);
+
+      clampPillsToViewport(width, height);
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        spawnLoop();
+      } else {
+        stopSpawning();
+      }
+    });
+
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        setCanvasContainerSize();
+        updateWorldOnResize();
+      }, 50);
+    });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      setCanvasContainerSize();
+      initMatterCanvas();
+    });
+
+
+    // Project cards
+    let cardBody = null;
+    const cardHeight = 300; // same as #project-card height
+
+    function showProjectCard() {
+      const card = document.getElementById("project-card");
+      card.classList.add("visible");
+
+      const { width, height } = getCanvasContainerSize();
+
+      if (!cardBody) {
+        cardBody = Bodies.rectangle(
+          width / 2,
+          height - cardHeight / 2,
+          width,
+          cardHeight,
+          {
+            isStatic: true,
+            render: { visible: false },
+          }
+        );
+        World.add(world, cardBody);
+      } else {
+        Matter.Body.setPosition(cardBody, {
+          x: width / 2,
+          y: height - cardHeight / 2,
+        });
+      }
+    }
+
+    function hideProjectCard() {
+      document.getElementById("project-card").classList.remove("visible");
+      if (cardBody) {
+        World.remove(world, cardBody);
+        cardBody = null;
+      }
+    }
+
+    // Modify enableClickNavigation() to trigger card
+    function enableClickNavigation() {
+      render.canvas.addEventListener("click", (event) => {
+        const mousePos = { x: event.offsetX, y: event.offsetY };
+        pills.forEach((pill) => {
+          const bounds = pill.bounds;
+          if (
+            mousePos.x >= bounds.min.x &&
+            mousePos.x <= bounds.max.x &&
+            mousePos.y >= bounds.min.y &&
+            mousePos.y <= bounds.max.y
+          ) {
+            if (pill.customData.url) {
+              // Replace navigation with card behavior for now:
+              showProjectCard(); // Show card instead of jumping
+            }
+          }
+        });
+      });
+    }
+
+    // Update card body on resize
+    function updateWorldOnResize() {
+      const { width, height } = getCanvasContainerSize();
+
+      render.canvas.width = width * dpr;
+      render.canvas.height = height * dpr;
+      render.canvas.style.width = width + "px";
+      render.canvas.style.height = height + "px";
+      render.context.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      render.options.width = width;
+      render.options.height = height;
+
+      Matter.Body.setPosition(ground, { x: width / 2, y: height + 20 });
+      Matter.Body.setVertices(ground, [
+        { x: 0, y: height },
+        { x: width, y: height },
+        { x: width, y: height + 40 },
+        { x: 0, y: height + 40 },
+      ]);
+
+      Matter.Body.setPosition(rightWall, { x: width + 20, y: height / 2 });
+      Matter.Body.setVertices(rightWall, [
+        { x: width, y: 0 },
+        { x: width + 40, y: 0 },
+        { x: width + 40, y: height },
+        { x: width, y: height },
+      ]);
+
+      // Update the cardBody's size/position too
+      if (cardBody) {
+        Matter.Body.setPosition(cardBody, {
+          x: width / 2,
+          y: height - cardHeight / 2,
+        });
+        Matter.Body.setVertices(cardBody, [
+          { x: 0, y: height - cardHeight },
+          { x: width, y: height - cardHeight },
+          { x: width, y: height },
+          { x: 0, y: height },
+        ]);
+      }
+
+      clampPillsToViewport(width, height);
+    }
+
+    // You can also add a way to hide the card later (e.g., timeout or close button)
+
+  </script>
+</body>
+</html>
