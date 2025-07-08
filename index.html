@@ -17,8 +17,8 @@
       width: 100vw;
       height: 100%;
       overflow: hidden;
-      /*border-radius: 30px;
-      box-shadow: 0 0 50px rgba(0,0,0,0.1);*/
+      border-radius: 30px;
+      box-shadow: 0 0 50px rgba(0,0,0,0.1);
     }
     canvas {
       display: block;
@@ -29,7 +29,7 @@
   <div id="canvas-container"></div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
-    const { Engine, Render, Runner, Bodies, Body, Events, Mouse, MouseConstraint, World } = Matter;
+    const { Engine, Render, Runner, Bodies, Events, Mouse, MouseConstraint, World } = Matter;
 
     let engine, render, runner, world;
     let ground, leftWall, rightWall;
@@ -42,10 +42,7 @@
     let spawnActive = true;
 
     const MAX_EMOJIS = 70;
-    const CONTAINER_SIZE_RATIO = 1;
-
-    let infoCardBody = null;
-    let infoCardText = "";
+    const CONTAINER_SIZE_RATIO = 0.9;
 
     const pills = [];
 
@@ -120,48 +117,6 @@
       runner = Runner.create();
       Runner.run(runner, engine);
 
-
-      // Draw the card and text in the canvas
-      Events.on(render, "afterRender", () => {
-        // console.log("afterRender running");
-
-        if (!infoCardBody) return;
-
-        const ctx = render.context;
-        const pos = infoCardBody.position;
-        const w = infoCardBody.bounds.max.x - infoCardBody.bounds.min.x;
-        const h = infoCardBody.bounds.max.y - infoCardBody.bounds.min.y;
-
-        ctx.save();
-        ctx.fillStyle = "#ffffff";
-        ctx.strokeStyle = "#aaa";
-        ctx.lineWidth = 2;
-
-        // Rounded rectangle
-        const radius = 20;
-        ctx.beginPath();
-        ctx.moveTo(pos.x - w / 2 + radius, pos.y - h / 2);
-        ctx.lineTo(pos.x + w / 2 - radius, pos.y - h / 2);
-        ctx.quadraticCurveTo(pos.x + w / 2, pos.y - h / 2, pos.x + w / 2, pos.y - h / 2 + radius);
-        ctx.lineTo(pos.x + w / 2, pos.y + h / 2 - radius);
-        ctx.quadraticCurveTo(pos.x + w / 2, pos.y + h / 2, pos.x + w / 2 - radius, pos.y + h / 2);
-        ctx.lineTo(pos.x - w / 2 + radius, pos.y + h / 2);
-        ctx.quadraticCurveTo(pos.x - w / 2, pos.y + h / 2, pos.x - w / 2, pos.y + h / 2 - radius);
-        ctx.lineTo(pos.x - w / 2, pos.y - h / 2 + radius);
-        ctx.quadraticCurveTo(pos.x - w / 2, pos.y - h / 2, pos.x - w / 2 + radius, pos.y - h / 2);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        // Text
-        ctx.fillStyle = "#222";
-        ctx.font = "18px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(infoCardText, pos.x, pos.y + 6);
-
-        ctx.restore();
-      });
-
       // Monitor the pills to detect lost ones
       let frameCount = 0;
       Events.on(engine, "afterUpdate", () => {
@@ -191,13 +146,6 @@
 
       World.add(world, mouseConstraint);
       render.mouse = mouse;
-
-      // Prevent dragging the info card
-      Events.on(mouseConstraint, "startdrag", (event) => {
-        if (event.body?.plugin?.noDrag) {
-          mouseConstraint.body = null;
-        }
-      });
 
       enableRenderingText();
       enableClickNavigation();
@@ -315,56 +263,6 @@
       });
     }
 
-    function showInfoCardFromPill(pill) {
-      const { width, height } = getCanvasContainerSize();
-      const cardWidth = width * 0.7;
-      const cardHeight = 120;
-
-      // Remove existing card
-      if (infoCardBody) {
-        World.remove(engine.world, infoCardBody);
-        infoCardBody = null;
-      }
-
-      // Format message
-      const label = pill.customData?.text || "something";
-      infoCardText = `Scroll to see my ${label.replace(/^[^\w]+/, "")} work`;
-
-      // Create new card body (start below canvas)
-      infoCardBody = Bodies.rectangle(
-        width / 2,
-        // height + cardHeight / 2 + 20,
-        height + 20,
-        // height - 100, // For testiing purpose
-        cardWidth,
-        cardHeight,
-        {
-          chamfer: { radius: 30 },
-          isStatic: false,
-          restitution: 0,           // no bounce
-          friction: 1,              // full resistance
-          frictionAir: 0.5,         // slow down motion
-          inertia: Infinity,        // prevent rotation
-          render: { visible: false }, // we draw it manually
-          plugin: { noDrag: true } // prevent dragging
-        }
-      );
-      console.log("infoCardBody created:", infoCardBody.position);
-
-      World.add(engine.world, infoCardBody);
-
-      // Push it upward into the canvas
-      Body.setVelocity(infoCardBody, { x: 0, y: -6 });
-      // Body.applyForce(infoCardBody, infoCardBody.position, { x: 0, y: -0.5 });
-
-      setTimeout(() => {
-        if (infoCardBody) {
-          Body.setVelocity(infoCardBody, { x: 0, y: 0 });
-          Body.setStatic(infoCardBody, true); // freeze
-        }
-      }, 1200); // adjust this timing if needed
-    }
-
     function enableClickNavigation() {
       render.canvas.addEventListener("click", (event) => {
         const mousePos = { x: event.offsetX, y: event.offsetY };
@@ -376,11 +274,9 @@
             mousePos.y >= bounds.min.y &&
             mousePos.y <= bounds.max.y
           ) {
-            // if (pill.customData.url) {
-            //   window.location.href = pill.customData.url;
-            // }
-            console.log("Pill clicked:", pill.customData?.text);
-            showInfoCardFromPill(pill);
+            if (pill.customData.url) {
+              window.location.href = pill.customData.url;
+            }
           }
         });
       });
