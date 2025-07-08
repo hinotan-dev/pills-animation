@@ -27,6 +27,27 @@
 </head>
 <body>
   <div id="canvas-container"></div>
+  <div id="project-card">Check out this project…</div>
+
+  <style>
+    #project-card {
+      position: absolute;
+      bottom: -300px;
+      left: 0;
+      width: 100%;
+      height: 300px;
+      background: white;
+      box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.2);
+      transition: transform 0.5s ease;
+      transform: translateY(0);
+      z-index: 10;
+    }
+
+    #project-card.visible {
+      transform: translateY(-300px);
+    }
+  </style>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script>
     const { Engine, Render, Runner, Bodies, Events, Mouse, MouseConstraint, World } = Matter;
@@ -347,6 +368,115 @@
       setCanvasContainerSize();
       initMatterCanvas();
     });
+
+
+    // Project cards
+    let cardBody = null;
+    const cardHeight = 300; // same as #project-card height
+
+    function showProjectCard() {
+      const card = document.getElementById("project-card");
+      card.classList.add("visible");
+
+      const { width, height } = getCanvasContainerSize();
+
+      if (!cardBody) {
+        cardBody = Bodies.rectangle(
+          width / 2,
+          height - cardHeight / 2,
+          width,
+          cardHeight,
+          {
+            isStatic: true,
+            render: { visible: false },
+          }
+        );
+        World.add(world, cardBody);
+      } else {
+        Matter.Body.setPosition(cardBody, {
+          x: width / 2,
+          y: height - cardHeight / 2,
+        });
+      }
+    }
+
+    function hideProjectCard() {
+      document.getElementById("project-card").classList.remove("visible");
+      if (cardBody) {
+        World.remove(world, cardBody);
+        cardBody = null;
+      }
+    }
+
+    // Modify enableClickNavigation() to trigger card
+    function enableClickNavigation() {
+      render.canvas.addEventListener("click", (event) => {
+        const mousePos = { x: event.offsetX, y: event.offsetY };
+        pills.forEach((pill) => {
+          const bounds = pill.bounds;
+          if (
+            mousePos.x >= bounds.min.x &&
+            mousePos.x <= bounds.max.x &&
+            mousePos.y >= bounds.min.y &&
+            mousePos.y <= bounds.max.y
+          ) {
+            if (pill.customData.url) {
+              // Replace navigation with card behavior for now:
+              showProjectCard(); // Show card instead of jumping
+            }
+          }
+        });
+      });
+    }
+
+    // Update card body on resize
+    function updateWorldOnResize() {
+      const { width, height } = getCanvasContainerSize();
+
+      render.canvas.width = width * dpr;
+      render.canvas.height = height * dpr;
+      render.canvas.style.width = width + "px";
+      render.canvas.style.height = height + "px";
+      render.context.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      render.options.width = width;
+      render.options.height = height;
+
+      Matter.Body.setPosition(ground, { x: width / 2, y: height + 20 });
+      Matter.Body.setVertices(ground, [
+        { x: 0, y: height },
+        { x: width, y: height },
+        { x: width, y: height + 40 },
+        { x: 0, y: height + 40 },
+      ]);
+
+      Matter.Body.setPosition(rightWall, { x: width + 20, y: height / 2 });
+      Matter.Body.setVertices(rightWall, [
+        { x: width, y: 0 },
+        { x: width + 40, y: 0 },
+        { x: width + 40, y: height },
+        { x: width, y: height },
+      ]);
+
+      // Update the cardBody's size/position too
+      if (cardBody) {
+        Matter.Body.setPosition(cardBody, {
+          x: width / 2,
+          y: height - cardHeight / 2,
+        });
+        Matter.Body.setVertices(cardBody, [
+          { x: 0, y: height - cardHeight },
+          { x: width, y: height - cardHeight },
+          { x: width, y: height },
+          { x: 0, y: height },
+        ]);
+      }
+
+      clampPillsToViewport(width, height);
+    }
+
+    // You can also add a way to hide the card later (e.g., timeout or close button)
+
   </script>
 </body>
 </html>
