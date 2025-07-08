@@ -318,7 +318,7 @@
     function showInfoCardFromPill(pill) {
       const { width, height } = getCanvasContainerSize();
       const cardWidth = width * 0.7;
-      const cardHeight = 200;
+      const cardHeight = 120;
 
       // Remove existing card
       if (infoCardBody) {
@@ -333,21 +333,20 @@
       // Create new card body (start below canvas)
       infoCardBody = Bodies.rectangle(
         width / 2,
-        height + cardHeight / 2 + 20,
+        // height + cardHeight / 2 + 20,
+        height + 20,
         // height - 100, // For testiing purpose
         cardWidth,
         cardHeight,
         {
-          chamfer: { radius: 20 },
+          chamfer: { radius: 30 },
           isStatic: false,
-          restitution: 0.6,
-          collisionFilter: {
-            group: 0,
-            category: 0x0002,
-            mask: 0x0001, // only collide with default category
-          },
+          restitution: 0,           // no bounce
+          friction: 1,              // full resistance
+          frictionAir: 0.5,         // slow down motion
+          inertia: Infinity,        // prevent rotation
           render: { visible: false }, // we draw it manually
-          plugin: { noDrag: true } // optional marker (ignored by Matter, can be used in your logic)
+          plugin: { noDrag: true } // prevent dragging
         }
       );
       console.log("infoCardBody created:", infoCardBody.position);
@@ -355,7 +354,14 @@
       World.add(engine.world, infoCardBody);
 
       // Push it upward into the canvas
-      Body.setVelocity(infoCardBody, { x: 0, y: -100 });
+      Body.setVelocity(infoCardBody, { x: 0, y: -2 });
+
+      setTimeout(() => {
+        if (infoCardBody) {
+          Body.setVelocity(infoCardBody, { x: 0, y: 0 });
+          Body.setStatic(infoCardBody, true); // freeze
+        }
+      }, 1200); // adjust this timing if needed
     }
 
     function enableClickNavigation() {
